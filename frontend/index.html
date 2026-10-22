@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Inbox Sloth</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="top">
+    <div class="brand">
+      <span class="logo" aria-hidden="true">🦥</span>
+      <div>
+        <h1>Inbox Sloth</h1>
+        <p class="tag">Your inbox is full. Your brain doesn't have to be.</p>
+      </div>
+    </div>
+    <div id="health" class="pill pill-wait" title="Local model status">checking model…</div>
+  </header>
+
+  <main>
+    <section id="onboarding" class="card">
+      <h2>1. Tell the sloth about you</h2>
+      <form id="profile-form">
+        <label>I am a
+          <select name="role">
+            <option value="student">student</option>
+            <option value="professional">working professional</option>
+            <option value="freelancer">freelancer</option>
+            <option value="other">something else</option>
+          </select>
+        </label>
+        <label>Usual hours
+          <span class="inline">
+            <input type="time" name="study_start" value="09:00"> to
+            <input type="time" name="study_end" value="22:00">
+          </span>
+        </label>
+        <fieldset>
+          <legend>What matters most</legend>
+          <div id="priorities" class="checks"></div>
+        </fieldset>
+        <label>Reminders
+          <select name="reminder_style">
+            <option value="early">well in advance</option>
+            <option value="last_minute">only when deadlines approach</option>
+          </select>
+        </label>
+        <button type="submit" class="btn">Save</button>
+        <span id="profile-saved" class="muted"></span>
+      </form>
+    </section>
+
+    <section class="card">
+      <h2>2. Let it read your inbox</h2>
+      <p class="muted">Emails are analysed by a model running on this machine. Nothing is sent to a cloud LLM.</p>
+      <div class="row">
+        <button id="btn-sample" class="btn secondary">Load sample inbox</button>
+        <button id="btn-process" class="btn">Analyse emails</button>
+        <button id="btn-reset" class="btn ghost">Reset</button>
+        <span id="email-count" class="muted"></span>
+      </div>
+      <div id="progress" class="progress" hidden>
+        <div class="bar"><div id="bar-fill"></div></div>
+        <p id="progress-text" class="muted"></p>
+      </div>
+      <p id="errors" class="error" hidden></p>
+    </section>
+
+    <section class="card">
+      <div class="row spread">
+        <h2>3. Your commitments</h2>
+        <label class="muted small"><input type="checkbox" id="show-done"> show completed</label>
+      </div>
+      <ul id="tasks" class="tasks"></ul>
+      <p id="empty" class="muted" hidden>Nothing yet. Load the sample inbox and press “Analyse emails”.</p>
+    </section>
+  </main>
+
+  <dialog id="source">
+    <form method="dialog" class="dlg-head">
+      <h3 id="src-title"></h3>
+      <button class="btn ghost" aria-label="Close">Close</button>
+    </form>
+    <p id="src-meta" class="muted small"></p>
+    <h4>Why the sloth thinks this</h4>
+    <pre id="src-body"></pre>
+    <h4>History</h4>
+    <ul id="src-history" class="history"></ul>
+  </dialog>
+
+  <script src="app.js"></script>
+</body>
+</html>

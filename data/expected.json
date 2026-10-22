@@ -1,0 +1,18 @@
+{
+  "_note": "Ground truth AFTER all 18 emails are processed in order. Used by `python -m app.cli eval` to measure extraction accuracy. due=null means the email gives no usable date.",
+  "commitments": [
+    {"title": "Submit probability assignment 3", "kind": "task", "due": "2026-10-22T23:59", "flags": ["deadline_changed"]},
+    {"title": "Submit lab 5 report", "kind": "task", "due": "2026-10-22T17:00"},
+    {"title": "Project review meeting", "kind": "meeting", "due": "2026-10-22T11:00", "flags": ["deadline_changed"]},
+    {"title": "Attend workshop planning meeting", "kind": "meeting", "due": "2026-10-24T10:00"},
+    {"title": "Apply for summer internship", "kind": "task", "due": "2026-11-02T23:59"},
+    {"title": "Data Structures mid-sem exam", "kind": "exam", "due": "2026-11-09T10:00"},
+    {"title": "Send slides to Ananya", "kind": "task", "due": "2026-10-21T18:00"},
+    {"title": "Return library book", "kind": "task", "due": "2026-10-25T23:59"},
+    {"title": "Python quiz", "kind": "exam", "due": "2026-10-26T09:00"},
+    {"title": "Pay semester fee", "kind": "task", "due": "2026-10-30T23:59"},
+    {"title": "Reply with Lab 5 viva slot", "kind": "reply", "due": "2026-10-23T23:59"},
+    {"title": "Submit scholarship verification form", "kind": "task", "due": null, "flags": ["no_date"]}
+  ],
+  "no_commitment_emails": ["e04", "e08", "e13", "e14"]
+}

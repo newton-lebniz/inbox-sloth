@@ -1,0 +1,146 @@
+[
+  {
+    "id": "e01",
+    "thread_id": "prob-a3",
+    "from": "Prof. S. Rao <rao@college.example>",
+    "subject": "Probability Assignment 3",
+    "sent_at": "2026-10-19T09:10:00",
+    "body": "Dear students,\n\nAssignment 3 for Probability and Statistics is now on the course portal. It covers conditional probability and Bayes' theorem. The assignment is due Friday 23 October, 11:59 PM. Late submissions will lose 10% per day.\n\nRegards,\nProf. S. Rao"
+  },
+  {
+    "id": "e02",
+    "thread_id": "prob-a3",
+    "from": "Prof. S. Rao <rao@college.example>",
+    "subject": "Correction: Probability Assignment 3 deadline",
+    "sent_at": "2026-10-20T14:30:00",
+    "body": "Dear students,\n\nA correction to my earlier email: because of the department holiday on Friday, the deadline for Assignment 3 has moved earlier. Please submit Probability Assignment 3 by Thursday 22 October, 11:59 PM instead.\n\nSorry for the confusion.\nProf. S. Rao"
+  },
+  {
+    "id": "e03",
+    "thread_id": "lab5",
+    "from": "Ms. K. Iyer (Lab Instructor) <iyer@college.example>",
+    "subject": "Lab 5 report due Thursday",
+    "sent_at": "2026-10-19T10:00:00",
+    "body": "Hello everyone,\n\nThis is a reminder that the Lab 5 report is due this Thursday by 5 PM. Upload a single PDF on the lab portal. Reports without the observation table will not be graded.\n\nMs. Iyer"
+  },
+  {
+    "id": "e04",
+    "thread_id": "lab5-info",
+    "from": "Ms. K. Iyer (Lab Instructor) <iyer@college.example>",
+    "subject": "Updated lab instructions for Lab 5",
+    "sent_at": "2026-10-20T11:20:00",
+    "body": "Hello everyone,\n\nI have updated the instruction sheet for Lab 5. Question 3 now asks you to plot the results with matplotlib instead of Excel. The revised PDF is on the portal. No change to the submission process.\n\nMs. Iyer"
+  },
+  {
+    "id": "e05",
+    "thread_id": "proj-meet",
+    "from": "Dr. A. Menon <menon@college.example>",
+    "subject": "Project review meeting",
+    "sent_at": "2026-10-19T15:40:00",
+    "body": "Hi team,\n\nLet's have our project review meeting this Wednesday at 4 PM in Lab 3. Please bring your progress notes and be ready to demo the current build.\n\nDr. Menon"
+  },
+  {
+    "id": "e06",
+    "thread_id": "proj-meet",
+    "from": "Dr. A. Menon <menon@college.example>",
+    "subject": "Re: Project review meeting - rescheduled",
+    "sent_at": "2026-10-20T18:05:00",
+    "body": "Hi team,\n\nI have a conflict on Wednesday, so the project review meeting is rescheduled to Thursday at 11 AM. Same room, Lab 3. Sorry for the short notice.\n\nDr. Menon"
+  },
+  {
+    "id": "e07",
+    "thread_id": "ehacs-workshop",
+    "from": "EHaCS Core Team <ehacs@college.example>",
+    "subject": "Workshop planning meeting",
+    "sent_at": "2026-10-19T20:15:00",
+    "body": "Hey core team,\n\nWe need to finalise the speaker list and the schedule for the CTF workshop. Planning meeting is on Saturday, 24 October at 10:00 AM in the club room. Everyone should attend.\n\n- EHaCS"
+  },
+  {
+    "id": "e08",
+    "thread_id": "campus-weekly",
+    "from": "Campus Weekly <newsletter@college.example>",
+    "subject": "Campus Weekly: Diwali fest, photography club and more",
+    "sent_at": "2026-10-20T07:00:00",
+    "body": "This week on campus!\n\n* Diwali fest stalls open from 28 October near the main lawn.\n* The photography club is showing its annual exhibition in the library hall.\n* Cafeteria now serves filter coffee until 6 PM.\n\nWant to be featured? Write to us anytime. Unsubscribe at the bottom of this email."
+  },
+  {
+    "id": "e09",
+    "thread_id": "internship-2026",
+    "from": "Placement Cell <placements@college.example>",
+    "subject": "Summer internship applications open",
+    "sent_at": "2026-10-19T12:30:00",
+    "body": "Dear students,\n\nThe placement cell has opened summer internship applications for second- and third-year students. Applications close on 2 November. Fill the form on the placement portal and attach your latest resume.\n\nPlacement Cell"
+  },
+  {
+    "id": "e10",
+    "thread_id": "midsem",
+    "from": "Examination Section <exams@college.example>",
+    "subject": "Mid-semester examination timetable",
+    "sent_at": "2026-10-20T16:45:00",
+    "body": "Dear students,\n\nThe mid-semester examination timetable has been released. Data Structures exam: 9 November, 10:00 AM, Room LH-2. Carry your ID card. The full timetable is on the notice board and the portal.\n\nExamination Section"
+  },
+  {
+    "id": "e11",
+    "thread_id": "slides-ananya",
+    "from": "Ananya <ananya@student.example>",
+    "subject": "Slides for the Friday presentation",
+    "sent_at": "2026-10-20T21:10:00",
+    "body": "Hey! Can you send me your part of the slides by tomorrow 6 PM? I'm merging everything into one deck tomorrow night. Keep it to 4 slides max. Thanks!"
+  },
+  {
+    "id": "e12",
+    "thread_id": "library-overdue",
+    "from": "Central Library <library@college.example>",
+    "subject": "Book return reminder",
+    "sent_at": "2026-10-21T08:00:00",
+    "body": "Dear member,\n\nThe book 'Introduction to Algorithms' issued to you is due soon. Please return it by 25 October to avoid a fine of Rs. 5 per day.\n\nCentral Library"
+  },
+  {
+    "id": "e13",
+    "thread_id": "mess-menu",
+    "from": "Hostel Mess Committee <mess@college.example>",
+    "subject": "Mess menu change this week",
+    "sent_at": "2026-10-21T07:30:00",
+    "body": "Hi all,\n\nDue to supply issues the Thursday dinner menu changes to khichdi and papad. Sunday breakfast stays the same. Thank you for understanding.\n\nMess Committee"
+  },
+  {
+    "id": "e14",
+    "thread_id": "codeplatform-promo",
+    "from": "CodeArena <offers@codearena.example>",
+    "subject": "50% off Premium - this weekend only!",
+    "sent_at": "2026-10-21T06:00:00",
+    "body": "Level up your interview prep! Get 50% off CodeArena Premium this weekend only. Unlock 500+ company-wise problems and mock interviews. Use code SLOTH50 at checkout. Offer ends Sunday midnight."
+  },
+  {
+    "id": "e15",
+    "thread_id": "python-quiz",
+    "from": "Prof. R. Mehta <mehta@college.example>",
+    "subject": "Quiz in Python lab",
+    "sent_at": "2026-10-21T08:30:00",
+    "body": "Hello students,\n\nThere will be a short quiz on functions and file handling at the start of class on Monday at 9:00 AM. It is closed book and carries 5 marks.\n\nProf. Mehta"
+  },
+  {
+    "id": "e16",
+    "thread_id": "fees",
+    "from": "Accounts Office <accounts@college.example>",
+    "subject": "Fee payment reminder - odd semester",
+    "sent_at": "2026-10-20T10:00:00",
+    "body": "Dear student,\n\nThis is a reminder to pay the remaining odd semester fee. The last date for payment without a late fine is 30 October 2026. Pay online through the student portal and keep the receipt.\n\nAccounts Office"
+  },
+  {
+    "id": "e17",
+    "thread_id": "scholarship-form",
+    "from": "Student Welfare Office <welfare@college.example>",
+    "subject": "Scholarship verification form",
+    "sent_at": "2026-10-21T08:45:00",
+    "body": "Hello,\n\nPlease submit the scholarship verification form to the welfare office soon. We will close the verification list once we have enough responses. Bring a printed copy.\n\nStudent Welfare Office"
+  },
+  {
+    "id": "e18",
+    "thread_id": "lab5-viva",
+    "from": "Ms. K. Iyer (Lab Instructor) <iyer@college.example>",
+    "subject": "Lab 5 viva slots",
+    "sent_at": "2026-10-21T08:50:00",
+    "body": "Hello everyone,\n\nViva slots for Lab 5 are Monday morning or Monday afternoon. Please reply to this email with your preferred slot by Friday. Slots are first come, first served.\n\nMs. Iyer"
+  }
+]
