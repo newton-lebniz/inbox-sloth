@@ -54,7 +54,7 @@ python -m app.cli demo           # load 18 sample emails, analyse them, score vs
 uvicorn app.main:app --reload    # open http://localhost:8000
 ```
 
-Ollama on another host (for example Windows host while the app runs in WSL):
+Under WSL2 the Windows host is auto-detected. To point at another host explicitly:
 
 ```bash
 export OLLAMA_URL=http://<host-ip>:11434
@@ -79,6 +79,7 @@ backend/app/pipeline.py      prompt, validation, response cache, orchestration
 backend/app/grounding.py     evidence, date support, kind/title normalisation, rule fallback
 backend/app/textnorm.py      text helpers (sentences, tokens, subject cleaning)
 backend/app/commitments.py   new-vs-update matching across emails
+backend/app/priority.py      role-aware priority scores, daily/weekly plan, clash detection
 backend/app/llm.py           Ollama client (JSON-schema constrained output)
 backend/app/db.py            SQLite storage (emails, commitments, history)
 backend/app/main.py          FastAPI API + static frontend
@@ -92,4 +93,5 @@ Email text goes only to the model running on your machine. Gmail sync (stretch g
 
 ## Status
 
-Day 2 of the Week 3 build: evaluator fixed, grounding layer, response cache. Next: priority scoring by role, Today / This Week dashboard, conflict detection, write-up.
+Day 3 of the Week 3 build: priority scoring by role, Today / This Week plan, clash and change detection,
+Ollama auto-detect under WSL. Next: real-model validation, final write-up (`docs/devpost-draft.md`).
