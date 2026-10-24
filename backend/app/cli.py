@@ -5,10 +5,14 @@
     python -m app.cli import-sample  # just load the 18 sample emails
     python -m app.cli process        # analyse any new emails
     python -m app.cli tasks          # print tracked commitments
-    python -m app.cli eval           # score against data/expected.json
+    python -m app.cli eval           # score against data/expected.json (vs the Day 1 baseline)
+    python -m app.cli reprocess      # re-analyse the loaded emails (model answers come from the cache)
+    python -m app.cli skipped        # what the sloth refused to track, and why
+    python -m app.cli cache-clear    # forget cached model answers (next run calls the model again)
 """
 from __future__ import annotations
 
+import json
 import sys
 import time
 from datetime import datetime
@@ -60,14 +64,37 @@ def cmd_tasks(store: Store, llm: OllamaLLM) -> int:
 
 def cmd_eval(store: Store, llm: OllamaLLM) -> int:
     r = evaluate(store)
-    print(f"Commitments found:   {r['found']}/{r['expected']}")
-    print(f"Dates correct:       {r['dates_correct']}/{r['expected']}")
-    print(f"Changes flagged:     {r['flags_correct']}/{r['expected']}")
-    print(f"False positives:     {r['false_positives']}  {r['extras']}")
-    print()
+    base = json.loads((config.DATA_DIR / "baseline_day1.json").read_text(encoding="utf-8"))["rescored_with_fixed_evaluator"]
+    n = r["expected"]
+    print(f"{'':<24}{'now':>8}{'Day 1':>8}   (Day 1 re-scored with this evaluator)")
+    for label, key in [("Commitments found", "found"), ("Dates correct", "dates_correct"),
+                       ("Kinds correct", "kinds_correct"), ("Changes flagged", "flags_correct")]:
+        print(f"{label:<24}{r[key]:>5}/{n:<2}{base[key]:>5}/{n}")
+    print(f"{'False positives':<24}{r['false_positives']:>8}{base['false_positives']:>8}  {r['extras']}")
+    print(f"Found by rule fallback: {r['from_rules']}   Unexpected flags: {r['unexpected_flags'] or 'none'}\n")
     for row in r["rows"]:
-        mark = "OK " if row["found"] and row["date_ok"] else "BAD"
-        print(f"{mark} {row['expected']:<38} want {row['want_due']}  got {row['got_due']}  ({row['got_title']})")
+        ok = row["found"] and row["date_ok"] and row["kind_ok"]
+        print(f"{'OK ' if ok else 'BAD'} {row['expected']:<38} want {row['want_due']} [{row['want_kind']}]"
+              f"  got {row['got_due']} [{row['got_kind']}] {row['got_title']!r} {('(' + row['origin'] + ')') if row['origin'] else ''}")
+    return 0
+
+
+def cmd_skipped(store: Store, llm: OllamaLLM) -> int:
+    rows = store.list_skipped()
+    for s in rows:
+        print(f"{s['email_id']:<5}{s['reason']:<20}{s['title']!r}   <- {s['subject']}")
+    if not rows:
+        print("Nothing skipped.")
+    return 0
+
+
+def cmd_reprocess(store: Store, llm: OllamaLLM) -> int:
+    store.reset_results()
+    return cmd_process(store, llm)
+
+
+def cmd_cache_clear(store: Store, llm: OllamaLLM) -> int:
+    print(f"Cleared {store.cache_clear()} cached model answers")
     return 0
 
 
@@ -89,6 +116,9 @@ COMMANDS = {
     "process": cmd_process,
     "tasks": cmd_tasks,
     "eval": cmd_eval,
+    "reprocess": cmd_reprocess,
+    "skipped": cmd_skipped,
+    "cache-clear": cmd_cache_clear,
     "import-sample": lambda s, l: print(f"Loaded {import_sample(s)} sample emails") or 0,
 }
 

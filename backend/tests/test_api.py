@@ -73,3 +73,18 @@ def test_unknown_email_is_404_and_list_hides_bodies(client):
     assert client.get("/api/emails/nope").status_code == 404
     client.post("/api/emails/sample")
     assert "body" not in client.get("/api/emails").json()[0]
+
+
+def test_skipped_items_are_exposed_with_reasons(client):
+    from fake_model import SCRIPT, FakeLLM, task
+    import copy
+    script = copy.deepcopy(SCRIPT)
+    script["Mess menu change this week"]["tasks"] = [task("Khichdi dinner", "Thursday", "Due to supply issues the Thursday dinner menu changes")]
+    c = TestClient(create_app(Store(":memory:"), FakeLLM(script)))
+    c.post("/api/emails/sample")
+    c.post("/api/process?wait=true")
+    skipped = c.get("/api/skipped").json()
+    assert any(s["reason"] == "informational" and s["title"] == "Khichdi dinner" and s["subject"] for s in skipped)
+    assert not [t for t in c.get("/api/commitments").json() if "khichdi" in t["title"].lower()]
+    c.post("/api/reset")
+    assert c.get("/api/skipped").json() == []

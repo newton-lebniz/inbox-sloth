@@ -20,13 +20,21 @@ Built for the DEV Hacktoberfest Open-Source AI Challenge, Week 3 (*Slow and Stea
 emails -> Gemma (Ollama, local) -> checks in plain code -> commitment tracker -> dashboard
 ```
 
-The model is only trusted to **read**. Everything checkable is checked in code:
+The model is only trusted to **read**. It is treated as one noisy witness, and plain code checks it
+against the email text (`backend/app/grounding.py`):
 
-- **Dates are resolved by Python, not the model.** The model copies the words ("Thursday 5 PM"); `dates.py` turns them into a real date relative to when the email was sent. Small models are bad at calendar maths.
-- **No invented commitments.** Every task must quote the email word for word. Quotes are verified against the text; failures are flagged `unverified` and can never overwrite a tracked task.
-- **Made-up dates are caught.** If the model's date words are not in the email, confidence drops to low and the UI says "Date unsure".
-- **Newsletters and promos never create tasks.**
-- **Out-of-order safety.** An older email cannot undo a newer one.
+- **Dates are resolved by Python, not the model.** The model copies the words ("Thursday 5 PM"); `dates.py` turns them into a real date relative to when the email was sent.
+- **A date must be in the email.** If the model's date words are not in the email, they are replaced by the email's own date (flagged "Date unsure") or dropped. An invented date is never kept.
+- **A task needs a cue.** Informational emails (menus, instruction changes, results) have no action, deadline or event wording, so nothing is tracked. They are listed under "Ignored by the sloth" with the reason, so nothing disappears silently.
+- **Evidence is chosen by code.** The highlighted sentence in the UI is a real sentence from the email, not the model's quote.
+- **Kinds and titles are normalised** from the subject and evidence (a quiz is an exam; a meeting is named after the meeting, not a step inside it).
+- **Rule-based safety net.** If the model returns nothing for an email, rules may propose one task from the email itself, subject to the same checks. Such tasks are marked "found by rules".
+- **Corrections update, they don't duplicate.** A correction is matched to the original by cleaned subject or thread, and an older email can never undo a newer one.
+- **Newsletters and promos never create tasks.** Past events and cancellations don't either.
+
+## Re-running without the model
+
+Valid model answers are cached in SQLite. After changing any code (not the prompt), `python -m app.cli reprocess` re-analyses all emails in about a second. `python -m app.cli cache-clear` forces fresh model calls.
 
 ## Run it
 
@@ -39,7 +47,7 @@ cd backend
 python -m venv .venv && source .venv/bin/activate     # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 
-python -m pytest -q              # 37 tests, no Ollama needed (uses a scripted fake model)
+python -m pytest -q              # ~110 tests, no Ollama needed (scripted + recorded model answers)
 python -m app.cli check          # is Ollama reachable, is the model pulled?
 python -m app.cli demo           # load 18 sample emails, analyse them, score vs ground truth
 
@@ -55,13 +63,21 @@ export SLOTH_MODEL=gemma3:4b     # default is gemma3:1b
 
 ## Measuring accuracy
 
-`data/expected.json` holds the correct answer for the 18 sample emails (12 final commitments, including one corrected deadline and one rescheduled meeting). `python -m app.cli eval` reports how many commitments were found, how many dates were exactly right, and false positives. The same pipeline is covered end to end by `tests/test_pipeline.py` using a scripted model.
+`data/expected.json` holds the correct answer for the 18 sample emails (12 final commitments, including a corrected deadline and a rescheduled meeting). `python -m app.cli eval` matches extracted commitments to expected ones one-to-one (a shared date alone is not a match) and reports found / dates / kinds / flags / false positives next to the Day 1 baseline. History and caveats: [docs/eval-history.md](docs/eval-history.md).
+
+## Known limits
+
+- The rules were written after seeing the 18 sample emails, so the sample score is a development-set result. `backend/tests/test_rules_generalise.py` checks 12 differently-worded emails, but the same author wrote both.
+- The rule fallback proposes at most one task per email; multi-task emails depend on the model.
+- Cancellations are ignored, not yet applied to an existing task. Social invitations that use cue words ("join us Friday 5 PM") can still slip through when the model proposes them.
 
 ## Project layout
 
 ```
 backend/app/dates.py         deterministic date resolver
-backend/app/pipeline.py      prompt, validation, quote/date verification
+backend/app/pipeline.py      prompt, validation, response cache, orchestration
+backend/app/grounding.py     evidence, date support, kind/title normalisation, rule fallback
+backend/app/textnorm.py      text helpers (sentences, tokens, subject cleaning)
 backend/app/commitments.py   new-vs-update matching across emails
 backend/app/llm.py           Ollama client (JSON-schema constrained output)
 backend/app/db.py            SQLite storage (emails, commitments, history)
@@ -76,4 +92,4 @@ Email text goes only to the model running on your machine. Gmail sync (stretch g
 
 ## Status
 
-Day 1 of the Week 3 build: extraction, commitment tracking, API and a first UI. Coming next: priority scoring by role, today/week dashboard, conflict detection, Gmail import.
+Day 2 of the Week 3 build: evaluator fixed, grounding layer, response cache. Next: priority scoring by role, Today / This Week dashboard, conflict detection, write-up.

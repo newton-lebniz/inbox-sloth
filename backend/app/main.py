@@ -148,6 +148,11 @@ def create_app(store: Optional[Store] = None, llm: Optional[LLM] = None) -> Fast
         store.update_commitment(cid, status=body.status)
         return store.get_commitment(cid)  # type: ignore[return-value]
 
+    @app.get("/api/skipped")
+    def list_skipped() -> List[Dict[str, Any]]:
+        """Things the model proposed that the sloth refused to track, with the reason."""
+        return store.list_skipped()
+
     @app.post("/api/reset")
     def reset() -> Dict[str, str]:
         store.reset()

@@ -103,3 +103,6 @@ mark { background: #ffe9a8; color: #2b2a27; padding: 0 2px; border-radius: 3px; 
 @media (max-width: 560px) {
   .task { grid-template-columns: 1fr; }
 }
+
+.skipped { margin-top: 14px; border-top: 1px dashed var(--line); padding-top: 10px; }
+.skipped summary { cursor: pointer; color: var(--muted); font-size: 0.9rem; }

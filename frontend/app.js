@@ -144,6 +144,26 @@ async function loadTasks() {
   list.replaceChildren();
   $("empty").hidden = items.length > 0;
   for (const c of items) list.append(renderTask(c));
+  await loadSkipped();
+}
+
+const SKIP_REASONS = {
+  informational: "no action or deadline wording in the email",
+  title_not_in_email: "not found in the email text",
+  no_evidence: "no supporting sentence in the email",
+  date_not_in_email: "its date is not in the email",
+  bulk_mail: "looks like a newsletter or promotion",
+};
+
+async function loadSkipped() {
+  const rows = await api("/skipped");
+  $("skipped-box").hidden = rows.length === 0;
+  $("skipped-title").textContent = `Ignored by the sloth (${rows.length})`;
+  const ul = $("skipped-list");
+  ul.replaceChildren();
+  for (const r of rows) {
+    ul.append(h("li", {}, `“${r.title}” from “${r.subject || r.email_id}”: ${SKIP_REASONS[r.reason] || r.reason}`));
+  }
 }
 
 function renderTask(c) {
@@ -187,6 +207,9 @@ async function openSource(id) {
     body.append(email.body);
   }
 
+  $("src-origin").textContent = c.origin === "rules"
+    ? "Found by the rule-based safety net: the local model returned nothing for this email."
+    : "Found by the local model; checked against the email text.";
   const hist = $("src-history");
   hist.replaceChildren();
   const fmt = (iso) => (iso ? new Date(iso).toLocaleString("en-IN", { weekday: "short", day: "numeric", month: "short", hour: "numeric", minute: "2-digit" }) : "no date");
@@ -197,6 +220,7 @@ async function openSource(id) {
       date_added: `Email ${e.email_id} added a date: ${fmt(e.new_due_at)}`,
       confirmed: `Email ${e.email_id} confirmed it`,
       stale_ignored: `Older email ${e.email_id} ignored`,
+      ignored_unverified: `Email ${e.email_id} suggested a change that could not be verified, so it was ignored`,
     }[e.event] || e.event;
     hist.append(h("li", {}, label));
   }

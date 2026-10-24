@@ -8,19 +8,24 @@ plain code is checked in plain code:
 """
 from __future__ import annotations
 
+import hashlib
+import json
 import re
 from datetime import datetime
 from difflib import SequenceMatcher
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from pydantic import ValidationError
 
 from . import config
 from .commitments import apply_task
-from .dates import resolve
+from .dates import Resolved, resolve
 from .db import Store
+from .grounding import (Grounding, fallback_candidates, ground_task, infer_kind, looks_bulk,
+                        refine_title)
 from .llm import LLM, LLMError
-from .schemas import NO_TASK_CATEGORIES, EmailAnalysis, Profile
+from .schemas import NO_TASK_CATEGORIES, EmailAnalysis, ExtractedTask, Profile
+from .textnorm import date_tokens, text_date_tokens
 
 SYSTEM_PROMPT = """You read ONE email for a {role} and find what the reader must DO, ATTEND, or REPLY to.
 Answer with JSON only.
@@ -60,17 +65,37 @@ def build_messages(email: Dict[str, Any], profile: Profile) -> Dict[str, str]:
     return {"system": SYSTEM_PROMPT.format(role=profile.role), "user": user}
 
 
-def analyze_email(llm: LLM, email: Dict[str, Any], profile: Profile) -> EmailAnalysis:
-    """Ask the model, validate the JSON, retry once if it is malformed."""
+def _cache_key(llm: LLM, msgs: Dict[str, str], schema: Dict[str, Any]) -> str:
+    model = getattr(llm, "model", type(llm).__name__)
+    blob = "\x00".join([str(model), msgs["system"], msgs["user"], json.dumps(schema, sort_keys=True)])
+    return hashlib.sha256(blob.encode("utf-8")).hexdigest()
+
+
+def analyze_email(llm: LLM, email: Dict[str, Any], profile: Profile,
+                  store: Optional[Store] = None) -> EmailAnalysis:
+    """Ask the model, validate the JSON, retry once if it is malformed. With a store, valid
+    answers are cached so re-running after a code change needs no model calls."""
     msgs = build_messages(email, profile)
     schema = EmailAnalysis.model_json_schema()
+    key = _cache_key(llm, msgs, schema) if (store is not None and config.USE_CACHE) else None
+    if key:
+        hit = store.cache_get(key)  # type: ignore[union-attr]
+        if hit is not None:
+            try:
+                return EmailAnalysis.model_validate(hit)
+            except ValidationError:
+                pass
     last_error: Optional[Exception] = None
     for _ in range(2):
         try:
             raw = llm.analyze(msgs["system"], msgs["user"], schema)
-            return EmailAnalysis.model_validate(raw)
+            analysis = EmailAnalysis.model_validate(raw)
         except (ValidationError, LLMError) as e:
             last_error = e
+            continue
+        if key:
+            store.cache_put(key, str(getattr(llm, "model", "?")), raw)  # type: ignore[union-attr]
+        return analysis
     raise ExtractionError(str(last_error))
 
 
@@ -97,39 +122,53 @@ def quote_in_email(quote: str, text: str, threshold: float = 0.85) -> bool:
 
 
 def phrase_in_email(phrase: str, text: str) -> bool:
-    """Do all the date/time words the model gave actually appear in the email?"""
-    words = _words(phrase)
-    if not words:
-        return True
-    present = set(_words(text))
-    return all(w in present for w in words)
+    """Do all the date/time words the model gave appear in the email? (Oct = October, 9th = 9)"""
+    need = date_tokens(phrase)
+    return not need or need <= text_date_tokens(text)
 
 
 # -- main entry points ------------------------------------------------------
 def process_email(store: Store, llm: LLM, email: Dict[str, Any], profile: Profile) -> Dict[str, Any]:
-    analysis = analyze_email(llm, email, profile)
+    analysis = analyze_email(llm, email, profile, store)
     sent_at = datetime.fromisoformat(email["sent_at"])
-    full_text = f"{email['subject']}\n{email['body']}"
+    subject, body = email["subject"], email["body"]
+    store.clear_skipped(email["id"])
 
-    tasks = [] if analysis.category in NO_TASK_CATEGORIES else analysis.tasks
+    bulk = analysis.category in NO_TASK_CATEGORIES or looks_bulk(subject, body)
+    proposed: List[Tuple[ExtractedTask, str]] = [(t, "model") for t in ([] if bulk else analysis.tasks)]
+    if bulk:
+        for t in analysis.tasks:
+            store.add_skipped(email["id"], t.title, "bulk_mail")
+
+    accepted: List[Tuple[ExtractedTask, Grounding, str]] = []
+    for t, origin in proposed:
+        g = ground_task(subject, body, t, sent_at)
+        if g.ok:
+            accepted.append((t, g, origin))
+        else:
+            store.add_skipped(email["id"], t.title, g.reason)
+
+    if not accepted and not bulk:            # the model found nothing usable: try the rules
+        for t in fallback_candidates(subject, body, sent_at, analysis.category):
+            g = ground_task(subject, body, t, sent_at)
+            if g.ok:
+                accepted.append((t, g, "rules"))
+
     results: List[Dict[str, Any]] = []
-    for t in tasks:
-        verified = quote_in_email(t.source_quote, full_text)
-        when = t.when
-        confidence_cap = None
-        if when and not phrase_in_email(when, full_text):
-            confidence_cap = "low"  # the model made the date words up
-
-        r = resolve(when, sent_at)
-        confidence = confidence_cap or r.confidence
+    for t, g, origin in accepted:
+        kind = infer_kind(t.kind, t.title, subject, g.sentence)
+        title = refine_title(t.title, kind, subject)
+        r = resolve(g.date_text, sent_at) if g.date_text else Resolved(None, False, "none")
+        confidence = "low" if (g.healed and r.due is not None) else r.confidence
         out = apply_task(
             store, email,
-            title=t.title, kind=t.kind,
+            title=title, kind=kind,
             due_at=r.due.isoformat(timespec="minutes") if r.due else None,
-            all_day=r.all_day, date_phrase=when, date_confidence=confidence,
-            details=t.details, source_quote=t.source_quote, verified=verified,
+            all_day=r.all_day, date_phrase=g.date_text[:80], date_confidence=confidence,
+            details=t.details, source_quote=g.sentence, verified=g.strong, origin=origin,
         )
-        out["title"] = t.title
+        out["title"] = title
+        out["origin"] = origin
         results.append(out)
 
     store.save_email_result(email["id"], "processed", analysis.category, analysis.summary)

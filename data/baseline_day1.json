@@ -1,0 +1,5 @@
+{
+  "_note": "Real Day 1 run: gemma3:1b via Ollama, 18 sample emails, ~181 s on CPU. Kept unchanged as the baseline.",
+  "reported_by_day1_evaluator": {"expected": 12, "found": 10, "dates_correct": 6, "flags_correct": 7, "false_positives": 2},
+  "rescored_with_fixed_evaluator": {"expected": 12, "found": 6, "dates_correct": 5, "kinds_correct": 5, "flags_correct": 4, "false_positives": 6}
+}
