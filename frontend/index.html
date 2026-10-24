@@ -68,9 +68,29 @@
       <p id="errors" class="error" hidden></p>
     </section>
 
+    <section class="card" id="plan-card" hidden>
+      <div class="row spread">
+        <h2>3. Your plan</h2>
+        <label class="muted small">As of
+          <input type="datetime-local" id="as-of" aria-label="Plan as of">
+        </label>
+      </div>
+      <p id="plan-note" class="muted small"></p>
+      <div id="plan-alerts"></div>
+      <h3 class="sub">Do first</h3>
+      <ul id="plan-focus" class="plan-list"></ul>
+      <p id="plan-focus-empty" class="muted" hidden>Nothing urgent. The sloth approves.</p>
+      <h3 class="sub">This week</h3>
+      <div id="plan-week" class="week"></div>
+      <details id="plan-more" class="skipped">
+        <summary id="plan-more-title"></summary>
+        <ul id="plan-more-list" class="plan-list"></ul>
+      </details>
+    </section>
+
     <section class="card">
       <div class="row spread">
-        <h2>3. Your commitments</h2>
+        <h2>4. All commitments</h2>
         <label class="muted small"><input type="checkbox" id="show-done"> show completed</label>
       </div>
       <ul id="tasks" class="tasks"></ul>

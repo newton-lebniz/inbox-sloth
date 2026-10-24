@@ -80,6 +80,7 @@ $("profile-form").addEventListener("submit", async (ev) => {
             priorities, reminder_style: f.reminder_style.value },
   });
   $("profile-saved").textContent = "Saved. Your priorities will shape what the sloth flags.";
+  loadPlan();
 });
 
 // ---------- emails + processing ----------
@@ -145,7 +146,67 @@ async function loadTasks() {
   $("empty").hidden = items.length > 0;
   for (const c of items) list.append(renderTask(c));
   await loadSkipped();
+  await loadPlan();
 }
+
+// ---------- plan ----------
+function planItem(i) {
+  const why = i.reasons.slice(0, 3).join(" \u00b7 ");
+  const check = h("input", { type: "checkbox", "aria-label": "Mark done" });
+  check.addEventListener("change", async () => {
+    await api(`/commitments/${i.id}`, { method: "PATCH", body: { status: "done" } });
+    loadTasks();
+  });
+  return h("li", { class: "pitem" },
+    h("span", { class: "dot " + i.level, title: `priority: ${i.level}` }),
+    h("div", {}, h("div", { class: "title" }, i.title), h("div", { class: "why" }, `${i.kind} \u00b7 ${why}`)),
+    h("div", { class: "row" }, h("span", { class: "when" }, i.due_label), check,
+      h("button", { class: "btn ghost small", onclick: () => openSource(i.id) }, "Source")),
+  );
+}
+
+let asOfChosen = false;
+async function loadPlan() {
+  const asOf = asOfChosen ? $("as-of").value : "";
+  const p = await api("/plan" + (asOf ? `?as_of=${encodeURIComponent(asOf)}` : ""));
+  $("plan-card").hidden = p.counts.pending === 0;
+  if (p.counts.pending === 0) return;
+  if (!asOfChosen) $("as-of").value = p.as_of;
+  $("plan-note").textContent = p.as_of_reason === "now"
+    ? `${p.counts.pending} open commitments, ranked for a ${$("profile-form").role.value}.`
+    : p.as_of_reason === "chosen by you"
+      ? "Planning as of the time you chose."
+      : p.as_of_reason.charAt(0).toUpperCase() + p.as_of_reason.slice(1) + ".";
+
+  const alerts = $("plan-alerts");
+  alerts.replaceChildren();
+  for (const c of p.conflicts) alerts.append(h("div", { class: "alert " + c.severity }, "\u26a0 " + c.message));
+  for (const c of p.changes) alerts.append(h("div", { class: "alert change" }, "\u21bb " + c.message + " Check it."));
+
+  const focus = $("plan-focus");
+  focus.replaceChildren(...[...p.overdue, ...p.focus.filter((i) => i.bucket !== "overdue")].map(planItem));
+  $("plan-focus-empty").hidden = p.focus.length > 0;
+
+  const week = $("plan-week");
+  week.replaceChildren();
+  p.week.forEach((d, idx) => {
+    const col = h("div", { class: "day" + (idx === 0 ? " today" : "") }, h("h4", {}, d.label));
+    if (!d.items.length) col.append(h("span", { class: "none" }, "free"));
+    for (const i of d.items) {
+      const at = i.all_day ? "" : new Date(i.due_at).toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit" }) + " ";
+      col.append(h("span", { class: "chip " + i.level, title: i.reasons.join(" \u00b7 ") }, at + i.title));
+    }
+    week.append(col);
+  });
+
+  const more = [...p.undated, ...p.can_wait.filter((i) => !p.focus.includes(i)), ...p.later];
+  const seen = new Set();
+  const uniq = more.filter((i) => (seen.has(i.id) ? false : seen.add(i.id)));
+  $("plan-more").hidden = uniq.length === 0;
+  $("plan-more-title").textContent = `Can wait / needs a date (${uniq.length})`;
+  $("plan-more-list").replaceChildren(...uniq.map(planItem));
+}
+$("as-of").addEventListener("change", () => { asOfChosen = true; loadPlan(); });
 
 const SKIP_REASONS = {
   informational: "no action or deadline wording in the email",
