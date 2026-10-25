@@ -11,7 +11,8 @@ FRONTEND_DIR = REPO_DIR / "frontend"
 DB_PATH = os.getenv("SLOTH_DB", str(BACKEND_DIR / "sloth.db"))
 
 # Ollama can run on another machine/host (e.g. Windows host while the app runs in WSL).
-OLLAMA_URL = os.getenv("OLLAMA_URL", "http://localhost:11434").rstrip("/")
+DEFAULT_OLLAMA_URL = "http://localhost:11434"
+OLLAMA_URL = os.getenv("OLLAMA_URL", DEFAULT_OLLAMA_URL).rstrip("/")
 MODEL = os.getenv("SLOTH_MODEL", "gemma3:1b")
 
 # CPU-only laptops are slow; give each email a generous timeout.

@@ -63,8 +63,10 @@ class OllamaLLM:
                  timeout: float = config.LLM_TIMEOUT_S):
         # An explicit url (argument or OLLAMA_URL) is always respected; otherwise localhost is
         # tried first and, under WSL2, the Windows host is tried if localhost has no Ollama.
-        self._probed = url is not None or "OLLAMA_URL" in os.environ
-        self.url = (url or config.OLLAMA_URL).rstrip("/")
+        # OLLAMA_URL is read here, at construction time, not from an import-time constant.
+        env_url = os.environ.get("OLLAMA_URL", "").strip()
+        self._probed = bool(url or env_url)
+        self.url = (url or env_url or config.DEFAULT_OLLAMA_URL).rstrip("/")
         self.model = model
         self.timeout = timeout
 
