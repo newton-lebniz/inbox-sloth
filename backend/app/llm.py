@@ -3,7 +3,9 @@ tests can swap in a fake and the model can be swapped by changing one env var.""
 from __future__ import annotations
 
 import json
-from typing import Any, Dict, Protocol
+import os
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Protocol
 
 import httpx
 
@@ -20,16 +22,68 @@ class LLM(Protocol):
         ...
 
 
+def wsl_host_candidates() -> List[str]:
+    """Inside WSL2, Ollama running on Windows is not at localhost. Likely addresses of the
+    Windows host: the default gateway, then the nameserver in resolv.conf."""
+    try:
+        if "microsoft" not in Path("/proc/version").read_text().lower():
+            return []
+    except OSError:
+        return []
+    found: List[str] = []
+    try:
+        for line in Path("/proc/net/route").read_text().splitlines()[1:]:
+            f = line.split()
+            if len(f) > 2 and f[1] == "00000000":          # default route
+                found.append(".".join(str(int(f[2][i:i + 2], 16)) for i in (6, 4, 2, 0)))
+                break
+    except (OSError, ValueError):
+        pass
+    try:
+        for line in Path("/etc/resolv.conf").read_text().splitlines():
+            if line.startswith("nameserver"):
+                found.append(line.split()[1])
+                break
+    except (OSError, IndexError):
+        pass
+    return list(dict.fromkeys(found))
+
+
+def _reachable(url: str) -> bool:
+    try:
+        return httpx.get(f"{url}/api/tags", timeout=1.5).status_code == 200
+    except httpx.HTTPError:
+        return False
+
+
 class OllamaLLM:
     """Gemma (or any model) served by Ollama, using JSON-schema constrained output."""
 
-    def __init__(self, url: str = config.OLLAMA_URL, model: str = config.MODEL,
+    def __init__(self, url: Optional[str] = None, model: str = config.MODEL,
                  timeout: float = config.LLM_TIMEOUT_S):
-        self.url = url.rstrip("/")
+        # An explicit url (argument or OLLAMA_URL) is always respected; otherwise localhost is
+        # tried first and, under WSL2, the Windows host is tried if localhost has no Ollama.
+        # OLLAMA_URL is read here, at construction time, not from an import-time constant.
+        env_url = os.environ.get("OLLAMA_URL", "").strip()
+        self._probed = bool(url or env_url)
+        self.url = (url or env_url or config.DEFAULT_OLLAMA_URL).rstrip("/")
         self.model = model
         self.timeout = timeout
 
+    def _ensure_url(self) -> None:
+        if self._probed:
+            return
+        self._probed = True
+        if _reachable(self.url):
+            return
+        for host in wsl_host_candidates():
+            candidate = f"http://{host}:11434"
+            if _reachable(candidate):
+                self.url = candidate
+                return
+
     def analyze(self, system: str, user: str, schema: Dict[str, Any]) -> Dict[str, Any]:
+        self._ensure_url()
         payload = {
             "model": self.model,
             "stream": False,
@@ -56,6 +110,7 @@ class OllamaLLM:
 
     def health(self) -> Dict[str, Any]:
         """Is Ollama reachable, and is our model pulled?"""
+        self._ensure_url()
         try:
             r = httpx.get(f"{self.url}/api/tags", timeout=5)
             r.raise_for_status()

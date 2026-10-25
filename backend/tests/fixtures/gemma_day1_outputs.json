@@ -1,0 +1,189 @@
+{
+  "_note": "Reconstructed from the sloth.db of the real Day 1 run (gemma3:1b via Ollama, same prompt). Each entry is what the model returned for that email subject. Tasks come from commitments that the run created (title/kind/when/quote as stored). Emails that created no commitment are recorded with tasks=[] (Day 1 stored no raw output; for the e02 correction the model may instead have returned a task whose quote failed verification and was silently ignored).",
+  "Probability Assignment 3": {
+    "category": "assignment",
+    "summary": "",
+    "tasks": [
+      {
+        "title": "Submit Probability Assignment 3",
+        "kind": "task",
+        "when": "Friday 23 October, 11:59 PM",
+        "details": "Late submissions will lose 10% per day",
+        "source_quote": "The assignment is due Friday 23 October, 11:59 PM."
+      }
+    ]
+  },
+  "Correction: Probability Assignment 3 deadline": {
+    "category": "deadline_notice",
+    "summary": "Assignment 3 deadline moved to Thursday 22 October, 11:59 PM.",
+    "tasks": []
+  },
+  "Lab 5 report due Thursday": {
+    "category": "deadline_notice",
+    "summary": "Lab 5 report due Thursday by 5 PM.",
+    "tasks": [
+      {
+        "title": "Upload report",
+        "kind": "task",
+        "when": "Thursday by 5 PM",
+        "details": "On the lab portal",
+        "source_quote": "Reports without the observation table will not be graded."
+      }
+    ]
+  },
+  "Updated lab instructions for Lab 5": {
+    "category": "assignment",
+    "summary": "",
+    "tasks": [
+      {
+        "title": "Plot results with matplotlib",
+        "kind": "task",
+        "when": "Tuesday 20 October 2026",
+        "details": "Plot results with matplotlib instead of Excel",
+        "source_quote": "Question 3 now asks you to plot the results with matplotlib instead of Excel."
+      }
+    ]
+  },
+  "Project review meeting": {
+    "category": "meeting",
+    "summary": "Project review meeting scheduled for Wednesday at 4 PM in Lab 3.",
+    "tasks": []
+  },
+  "Re: Project review meeting - rescheduled": {
+    "category": "meeting",
+    "summary": "",
+    "tasks": [
+      {
+        "title": "Review meeting",
+        "kind": "meeting",
+        "when": "Thursday at 11 AM",
+        "details": "Rescheduled to Thursday at Lab 3",
+        "source_quote": "I have a conflict on Wednesday so the project review meeting is rescheduled to Thursday at 11 AM."
+      }
+    ]
+  },
+  "Workshop planning meeting": {
+    "category": "meeting",
+    "summary": "",
+    "tasks": [
+      {
+        "title": "Finalise speaker list",
+        "kind": "meeting",
+        "when": "Saturday, 24 October at 10:00 AM",
+        "details": "Planning meeting in the club room",
+        "source_quote": "We need to finalise the speaker list and the schedule for the CTF workshop."
+      }
+    ]
+  },
+  "Campus Weekly: Diwali fest, photography club and more": {
+    "category": "announcement",
+    "summary": "Diwali fest, photography club exhibition, and cafeteria offerings are happening this week.",
+    "tasks": []
+  },
+  "Summer internship applications open": {
+    "category": "deadline_notice",
+    "summary": "Applications close on November 2nd.",
+    "tasks": [
+      {
+        "title": "Fill the form",
+        "kind": "task",
+        "when": "2 November",
+        "details": "On the placement portal",
+        "source_quote": "Applications close on 2 November."
+      }
+    ]
+  },
+  "Mid-semester examination timetable": {
+    "category": "deadline_notice",
+    "summary": "",
+    "tasks": [
+      {
+        "title": "Submit data structures exam",
+        "kind": "task",
+        "when": "November 9th, 10:00 AM",
+        "details": "Data Structures exam is scheduled on November 9th at 10:00 AM in Room LH-2.",
+        "source_quote": "The mid-semester examination timetable has been released."
+      }
+    ]
+  },
+  "Slides for the Friday presentation": {
+    "category": "assignment",
+    "summary": "",
+    "tasks": [
+      {
+        "title": "Send slides",
+        "kind": "task",
+        "when": "tomorrow 6 PM",
+        "details": "Merge everything into one deck tomorrow night.",
+        "source_quote": "I’m merging everything into one deck tomorrow night."
+      }
+    ]
+  },
+  "Book return reminder": {
+    "category": "deadline_notice",
+    "summary": "Book return due 25 October.",
+    "tasks": [
+      {
+        "title": "Return book",
+        "kind": "task",
+        "when": "25 October",
+        "details": "Return it to avoid a fine of Rs. 5 per day.",
+        "source_quote": ""
+      }
+    ]
+  },
+  "Mess menu change this week": {
+    "category": "assignment",
+    "summary": "Mess menu changes this week.",
+    "tasks": [
+      {
+        "title": "Khichdi and papad dinner",
+        "kind": "task",
+        "when": "Thursday",
+        "details": "Khichdi and papad dinner this week",
+        "source_quote": "Due to supply issues the Thursday dinner menu changes to khichdi and papad."
+      }
+    ]
+  },
+  "50% off Premium - this weekend only!": {
+    "category": "newsletter",
+    "summary": "CodeArena Premium discount this weekend.",
+    "tasks": []
+  },
+  "Quiz in Python lab": {
+    "category": "meeting",
+    "summary": "Quiz on functions and file handling on Monday at 9:00 AM.",
+    "tasks": [
+      {
+        "title": "Attend class",
+        "kind": "meeting",
+        "when": "Monday at 9:00 AM",
+        "details": "Quiz on functions and file handling.",
+        "source_quote": ""
+      }
+    ]
+  },
+  "Fee payment reminder - odd semester": {
+    "category": "deadline_notice",
+    "summary": "Pay the odd semester fee by 30 October 2026 without a late fine.",
+    "tasks": []
+  },
+  "Scholarship verification form": {
+    "category": "deadline_notice",
+    "summary": "Scholarship verification form deadline – close list once sufficient responses are received.",
+    "tasks": []
+  },
+  "Lab 5 viva slots": {
+    "category": "meeting",
+    "summary": "",
+    "tasks": [
+      {
+        "title": "Respond to email",
+        "kind": "reply",
+        "when": "Friday",
+        "details": "Reply to Ms. Iyer’s email regarding Viva slots for Lab 5.",
+        "source_quote": ""
+      }
+    ]
+  }
+}

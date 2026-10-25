@@ -4,6 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Inbox Sloth</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27%3E%3Ctext y=%27.9em%27 font-size=%2790%27%3E%F0%9F%A6%A5%3C/text%3E%3C/svg%3E">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -67,13 +68,39 @@
       <p id="errors" class="error" hidden></p>
     </section>
 
+    <section class="card" id="plan-card" hidden>
+      <div class="row spread">
+        <h2>3. Your plan</h2>
+        <label class="muted small">As of
+          <input type="datetime-local" id="as-of" aria-label="Plan as of">
+        </label>
+      </div>
+      <p id="plan-note" class="muted small"></p>
+      <div id="plan-alerts"></div>
+      <h3 class="sub">Do first</h3>
+      <ul id="plan-focus" class="plan-list"></ul>
+      <p id="plan-focus-empty" class="muted" hidden>Nothing urgent. The sloth approves.</p>
+      <h3 class="sub">This week</h3>
+      <div id="plan-week" class="week"></div>
+      <details id="plan-more" class="skipped">
+        <summary id="plan-more-title"></summary>
+        <ul id="plan-more-list" class="plan-list"></ul>
+      </details>
+    </section>
+
     <section class="card">
       <div class="row spread">
-        <h2>3. Your commitments</h2>
+        <h2>4. All commitments</h2>
         <label class="muted small"><input type="checkbox" id="show-done"> show completed</label>
       </div>
       <ul id="tasks" class="tasks"></ul>
       <p id="empty" class="muted" hidden>Nothing yet. Load the sample inbox and press “Analyse emails”.</p>
+      <details id="skipped-box" class="skipped" hidden>
+        <summary id="skipped-title"></summary>
+        <p class="muted small">The model suggested these, but the email has no action, deadline or event wording
+          for you (or the item is not in the email). They are not tracked.</p>
+        <ul id="skipped-list" class="history"></ul>
+      </details>
     </section>
   </main>
 
@@ -85,6 +112,7 @@
     <p id="src-meta" class="muted small"></p>
     <h4>Why the sloth thinks this</h4>
     <pre id="src-body"></pre>
+    <p id="src-origin" class="muted small"></p>
     <h4>History</h4>
     <ul id="src-history" class="history"></ul>
   </dialog>

@@ -7,6 +7,7 @@ from typing import Any, Dict, List
 from . import config
 from .commitments import similarity
 from .db import Store
+from .textnorm import content_tokens
 from .schemas import EmailIn
 
 
@@ -26,47 +27,71 @@ def import_sample(store: Store) -> int:
     return store.add_emails(load_sample_emails())
 
 
+def _eval_tokens(title: str) -> set:
+    return content_tokens(title, drop_weak=False)
+
+
+def _pair_score(exp: Dict[str, Any], act: Dict[str, Any]) -> float:
+    """How well an extracted commitment matches an expected one. 0 means 'not the same thing'.
+    A match needs real evidence: the same due date AND a shared content word, or a very
+    similar title. A shared date alone (two things due Thursday) is not enough."""
+    shared = len(_eval_tokens(exp["title"]) & _eval_tokens(act["title"]))
+    sim = similarity(exp["title"], act["title"])
+    if exp["due"] is None:                       # expected: no date at all
+        return 1.0 + sim if act["due_at"] is None and (sim >= 0.4 or shared >= 2) else 0.0
+    if act["due_at"] == exp["due"]:
+        return 2.0 + sim + 0.1 * shared if shared >= 1 else 0.0
+    return sim if sim >= 0.6 else 0.0            # right thing, wrong date
+
+
 def evaluate(store: Store) -> Dict[str, Any]:
-    """Compare what the app extracted with data/expected.json."""
+    """Compare what the app extracted with data/expected.json (one-to-one matching)."""
     expected = json.loads((config.DATA_DIR / "expected.json").read_text(encoding="utf-8"))
     actual = [c for c in store.list_commitments() if c["status"] != "dismissed"]
-    used: set = set()
-    rows: List[Dict[str, Any]] = []
 
-    for exp in expected["commitments"]:
-        best, best_score = None, 0.0
+    pairs = []
+    for i, exp in enumerate(expected["commitments"]):
         for a in actual:
-            if a["id"] in used or a["kind"] != exp["kind"]:
-                continue
-            s = similarity(exp["title"], a["title"])
-            if s > best_score:
-                best, best_score = a, s
-        # titles from a small model vary a lot, so be generous on the title
-        # and strict on what matters: the date
-        if best is None or best_score < 0.25:
-            for a in actual:
-                if a["id"] in used:
-                    continue
-                if exp["due"] and a["due_at"] == exp["due"] and a["kind"] == exp["kind"]:
-                    best, best_score = a, 0.25
-                    break
-        found = best is not None
-        if found:
-            used.add(best["id"])
-        date_ok = found and (best["due_at"] == exp["due"])
-        flags_ok = found and all(f in best["flags"] for f in exp.get("flags", []))
+            score = _pair_score(exp, a)
+            if score > 0:
+                pairs.append((score, i, a["id"]))
+    pairs.sort(key=lambda p: -p[0])
+    chosen: Dict[int, Dict[str, Any]] = {}
+    used_actual: set = set()
+    by_id = {a["id"]: a for a in actual}
+    for score, i, aid in pairs:
+        if i in chosen or aid in used_actual:
+            continue
+        chosen[i] = by_id[aid]
+        used_actual.add(aid)
+
+    rows: List[Dict[str, Any]] = []
+    for i, exp in enumerate(expected["commitments"]):
+        got = chosen.get(i)
         rows.append({
-            "expected": exp["title"], "found": found, "date_ok": bool(date_ok), "flags_ok": bool(flags_ok),
-            "got_title": best["title"] if found else None,
-            "got_due": best["due_at"] if found else None, "want_due": exp["due"],
+            "expected": exp["title"], "found": got is not None,
+            "date_ok": bool(got and got["due_at"] == exp["due"]),
+            "kind_ok": bool(got and got["kind"] == exp["kind"]),
+            "flags_ok": bool(got and all(f in got["flags"] for f in exp.get("flags", []))),
+            "got_title": got["title"] if got else None, "got_kind": got["kind"] if got else None,
+            "got_due": got["due_at"] if got else None, "want_due": exp["due"], "want_kind": exp["kind"],
+            "origin": got.get("origin", "model") if got else None,
         })
 
-    extras = [a for a in actual if a["id"] not in used]
+    extras = [a for a in actual if a["id"] not in used_actual]
+    unexpected_flags = sorted({
+        f for i, a in chosen.items() for f in a["flags"]
+        if f in ("unverified", "uncertain_date") and f not in expected["commitments"][i].get("flags", [])})
     n = len(rows)
-    found_n = sum(r["found"] for r in rows)
-    date_n = sum(r["date_ok"] for r in rows)
-    flags_n = sum(r["flags_ok"] for r in rows)
     return {
-        "expected": n, "found": found_n, "dates_correct": date_n, "flags_correct": flags_n,
-        "false_positives": len(extras), "extras": [e["title"] for e in extras], "rows": rows,
+        "expected": n,
+        "found": sum(r["found"] for r in rows),
+        "dates_correct": sum(r["date_ok"] for r in rows),
+        "kinds_correct": sum(r["kind_ok"] for r in rows),
+        "flags_correct": sum(r["flags_ok"] for r in rows),
+        "false_positives": len(extras),
+        "extras": [e["title"] for e in extras],
+        "unexpected_flags": unexpected_flags,
+        "from_rules": sum(1 for r in rows if r["origin"] == "rules"),
+        "rows": rows,
     }

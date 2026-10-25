@@ -73,24 +73,41 @@ def test_processing_is_idempotent(store, llm):
     assert len(store.list_commitments()) == 12
 
 
-def test_invented_quote_is_flagged_unverified(store):
+def test_invented_task_is_skipped_with_a_reason(store):
     script = copy.deepcopy(SCRIPT)
     script["Lab 5 viva slots"]["tasks"] = [
         task("Book a hotel for the viva", "Friday", "Please book a hotel room for the viva.", kind="task")]
     import_sample(store)
     process_all(store, FakeLLM(script))
-    c = by_title(store, "hotel")[0]
-    assert "unverified" in c["flags"]
+    assert by_title(store, "hotel") == []
+    assert ("e18", "Book a hotel for the viva", "title_not_in_email") in [
+        (s["email_id"], s["title"], s["reason"]) for s in store.list_skipped()]
 
 
-def test_unverified_guess_never_overwrites_a_tracked_task(store):
+def test_models_own_quote_is_irrelevant_evidence_comes_from_the_email(store):
+    """Day 1 silently ignored a correction because the model's quote failed verification."""
     script = copy.deepcopy(SCRIPT)
     script["Correction: Probability Assignment 3 deadline"]["tasks"][0]["source_quote"] = "Totally made up sentence here."
     import_sample(store)
     process_all(store, FakeLLM(script))
     c = by_title(store, "probability assignment 3")[0]
-    assert c["due_at"] == "2026-10-23T23:59"          # still the original date
-    assert "deadline_changed" not in c["flags"]
+    assert c["due_at"] == "2026-10-22T23:59" and "deadline_changed" in c["flags"]
+    assert "Thursday 22 October" in c["source_quote"]
+
+
+def test_weakly_grounded_update_never_overwrites_a_tracked_task(store):
+    """Date words present in the email but no action/deadline cue in that sentence -> flagged, not applied."""
+    from app.commitments import apply_task
+    import_sample(store)
+    process_all(store, FakeLLM())
+    email = store.get_email("e02")
+    out = apply_task(store, email, title="Submit Probability Assignment 3", kind="task",
+                     due_at="2026-10-30T23:59", all_day=True, date_phrase="30 October", date_confidence="high",
+                     details="", source_quote="x", verified=False)
+    assert out["action"] == "ignored_unverified"
+    c = store.get_commitment(by_title(store, "probability assignment 3")[0]["id"])
+    assert c["due_at"] == "2026-10-22T23:59"
+    assert c["events"][-1]["event"] == "ignored_unverified"
 
 
 def test_made_up_date_words_lower_confidence(store):

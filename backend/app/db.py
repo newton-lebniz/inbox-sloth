@@ -40,6 +40,7 @@ CREATE TABLE IF NOT EXISTS commitments (
     date_confidence TEXT NOT NULL DEFAULT 'none',  -- high | medium | low | none
     details TEXT NOT NULL DEFAULT '',
     status TEXT NOT NULL DEFAULT 'pending',   -- pending | done | dismissed
+    origin TEXT NOT NULL DEFAULT 'model',     -- model | rules (deterministic safety net)
     thread_id TEXT NOT NULL DEFAULT '',
     flags TEXT NOT NULL DEFAULT '[]',         -- JSON list: deadline_changed, uncertain_date, no_date, unverified
     previous_due_at TEXT,
@@ -49,6 +50,21 @@ CREATE TABLE IF NOT EXISTS commitments (
     last_sent_at TEXT NOT NULL,
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS skipped (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    email_id TEXT NOT NULL,
+    title TEXT NOT NULL,
+    reason TEXT NOT NULL,      -- informational | title_not_in_email | no_evidence | bulk_mail
+    at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS llm_cache (
+    key TEXT PRIMARY KEY,
+    model TEXT NOT NULL,
+    response TEXT NOT NULL,
+    at TEXT NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS commitment_events (
@@ -74,6 +90,9 @@ class Store:
         self._conn.row_factory = sqlite3.Row
         self._conn.execute("PRAGMA foreign_keys = ON")
         self._conn.executescript(SCHEMA)
+        cols = {r["name"] for r in self._conn.execute("PRAGMA table_info(commitments)")}
+        if "origin" not in cols:     # database created by Day 1
+            self._conn.execute("ALTER TABLE commitments ADD COLUMN origin TEXT NOT NULL DEFAULT 'model'")
         self._conn.commit()
 
     # -- low-level helpers -------------------------------------------------
@@ -177,13 +196,13 @@ class Store:
         cur = self._run(
             "INSERT INTO commitments (title, kind, due_at, all_day, date_phrase, date_confidence, "
             "details, thread_id, flags, source_email_id, first_email_id, source_quote, "
-            "last_sent_at, created_at, updated_at) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            "last_sent_at, created_at, updated_at, origin) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             [
                 c["title"], c["kind"], c.get("due_at"), int(c.get("all_day", False)),
                 c.get("date_phrase", ""), c.get("date_confidence", "none"), c.get("details", ""),
                 c.get("thread_id", ""), json.dumps(c.get("flags", [])), c["email_id"], c["email_id"],
-                c.get("source_quote", ""), c["sent_at"], ts, ts,
+                c.get("source_quote", ""), c["sent_at"], ts, ts, c.get("origin", "model"),
             ],
         )
         return int(cur.lastrowid)
@@ -213,10 +232,50 @@ class Store:
             [cid, email_id, event, old_due, new_due, now_iso()],
         )
 
-    def reset(self) -> None:
+    # -- skipped (things the model proposed that we refused to track) --------
+    def clear_skipped(self, email_id: str) -> None:
+        self._run("DELETE FROM skipped WHERE email_id = ?", [email_id])
+
+    def add_skipped(self, email_id: str, title: str, reason: str) -> None:
+        self._run("INSERT INTO skipped (email_id, title, reason, at) VALUES (?, ?, ?, ?)",
+                  [email_id, title, reason, now_iso()])
+
+    def list_skipped(self) -> List[Dict[str, Any]]:
+        return self._all(
+            "SELECT s.id, s.email_id, s.title, s.reason, e.subject FROM skipped s "
+            "LEFT JOIN emails e ON e.id = s.email_id ORDER BY s.id")
+
+    # -- model response cache (re-running after a code change needs no model) ----
+    def cache_get(self, key: str) -> Optional[Dict[str, Any]]:
+        row = self._one("SELECT response FROM llm_cache WHERE key = ?", [key])
+        return json.loads(row["response"]) if row else None
+
+    def cache_put(self, key: str, model: str, response: Dict[str, Any]) -> None:
+        self._run("INSERT OR REPLACE INTO llm_cache (key, model, response, at) VALUES (?, ?, ?, ?)",
+                  [key, model, json.dumps(response), now_iso()])
+
+    def cache_clear(self) -> int:
+        return self._run("DELETE FROM llm_cache").rowcount
+
+    def cache_size(self) -> int:
+        return int(self._one("SELECT COUNT(*) AS n FROM llm_cache")["n"])  # type: ignore[index]
+
+    # -- resets --------------------------------------------------------------
+    def reset_results(self) -> None:
+        """Forget what was extracted but keep the emails, so they can be re-analysed."""
         with self._lock:
             self._conn.executescript(
-                "DELETE FROM commitment_events; DELETE FROM commitments; DELETE FROM emails;"
+                "DELETE FROM commitment_events; DELETE FROM commitments; DELETE FROM skipped; "
+                "UPDATE emails SET status='new', category=NULL, summary=NULL, error=NULL, processed_at=NULL;"
+            )
+            self._conn.commit()
+
+    def reset(self) -> None:
+        """Remove emails and results. The model cache is kept on purpose."""
+        with self._lock:
+            self._conn.executescript(
+                "DELETE FROM commitment_events; DELETE FROM commitments; DELETE FROM skipped; "
+                "DELETE FROM emails;"
             )
             self._conn.commit()
 

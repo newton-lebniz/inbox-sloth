@@ -7,14 +7,7 @@ from difflib import SequenceMatcher
 from typing import Any, Dict, List, Optional, Set
 
 from .db import Store
-
-# Words that describe the *email*, not the task, so they must not affect matching.
-STOPWORDS = {
-    "the", "a", "an", "of", "for", "to", "and", "your", "you", "please", "in", "on", "at", "by",
-    "submit", "complete", "attend", "send", "reply", "respond", "finish", "do", "make",
-    "moved", "rescheduled", "reschedule", "updated", "update", "correction", "corrected",
-    "reminder", "revised", "new", "extended", "extension", "deadline", "due", "changed", "change",
-}
+from .textnorm import STOPWORDS, subject_key
 
 TITLE_MATCH = 0.8          # similar enough on its own
 THREAD_MATCH = 0.4         # similar enough when the email is in the same thread
@@ -30,11 +23,12 @@ def _numbers(tokens: List[str]) -> Set[str]:
 
 
 def similarity(a: str, b: str) -> float:
-    """0..1 title similarity. Numbers must agree: 'assignment 3' is not 'assignment 4'."""
+    """0..1 title similarity. If both titles carry numbers they must agree."""
     ta, tb = _tokens(a), _tokens(b)
     if not ta or not tb:
         return 0.0
-    if (_numbers(ta) or _numbers(tb)) and _numbers(ta) != _numbers(tb):
+    na, nb = _numbers(ta), _numbers(tb)
+    if na and nb and na != nb:          # 'assignment 3' vs 'assignment 4'; a missing number is fine
         return 0.0
     seq = SequenceMatcher(None, " ".join(ta), " ".join(tb)).ratio()
     sa, sb = set(ta), set(tb)
@@ -43,23 +37,22 @@ def similarity(a: str, b: str) -> float:
 
 
 def thread_key(subject: str, thread_id: str = "") -> str:
-    """Stable thread id: use the provided one, else the subject minus Re:/Fwd:/Correction: noise."""
-    if thread_id:
-        return thread_id
-    s = subject.lower()
-    s = re.sub(r"^\s*((re|fwd?|fw|correction|updated?|reminder|revised|urgent)\s*[:\-]\s*)+", "", s)
-    return re.sub(r"\s+", " ", s).strip()
+    """Stable thread id: the provided one, else the subject minus Re:/Correction:/deadline noise."""
+    return thread_id or subject_key(subject)
 
 
 def find_match(
-    open_items: List[Dict[str, Any]], title: str, kind: str, thread: str
+    open_items: List[Dict[str, Any]], title: str, kind: str, thread: str, subj_key: str = ""
 ) -> Optional[Dict[str, Any]]:
+    """Best open commitment this task is an update of. Same thread (same thread id OR
+    same cleaned subject) allows a looser title match; otherwise titles must be near-identical."""
     best, best_score = None, 0.0
     for item in open_items:
         if item["kind"] != kind:
             continue
         score = similarity(title, item["title"])
-        same_thread = bool(thread) and item["thread_id"] == thread
+        same_thread = (bool(thread) and item["thread_id"] == thread) or (
+            bool(subj_key) and item.get("subject_key") == subj_key)
         needed = THREAD_MATCH if same_thread else TITLE_MATCH
         if score >= needed and score > best_score:
             best, best_score = item, score
@@ -83,10 +76,16 @@ def apply_task(
     details: str,
     source_quote: str,
     verified: bool,
+    origin: str = "model",
 ) -> Dict[str, Any]:
     """Insert a new commitment or update an existing one. Returns {'action', 'id'}."""
     thread = thread_key(email["subject"], email.get("thread_id", ""))
-    match = find_match(store.open_commitments(), title, kind, thread)
+    subj = subject_key(email["subject"])
+    open_items = store.open_commitments()
+    for item in open_items:      # subject of the email that first created the task
+        first = store.get_email(item["first_email_id"])
+        item["subject_key"] = subject_key(first["subject"]) if first else ""
+    match = find_match(open_items, title, kind, thread, subj)
 
     flags: List[str] = []
     if date_confidence in ("low", "none") and date_phrase:
@@ -102,6 +101,7 @@ def apply_task(
             "date_phrase": date_phrase, "date_confidence": date_confidence,
             "details": details, "thread_id": thread, "flags": flags,
             "email_id": email["id"], "source_quote": source_quote, "sent_at": email["sent_at"],
+            "origin": origin,
         })
         store.add_event(cid, email["id"], "created", None, due_at)
         return {"action": "created", "id": cid}
@@ -110,6 +110,7 @@ def apply_task(
 
     # An unverified guess must never overwrite something we already track.
     if not verified:
+        store.add_event(cid, email["id"], "ignored_unverified", match["due_at"], due_at)
         return {"action": "ignored_unverified", "id": cid}
 
     # Out-of-order import: an older email must not undo a newer one.

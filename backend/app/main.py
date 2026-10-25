@@ -13,6 +13,7 @@ from . import config
 from .db import Store
 from .llm import LLM, OllamaLLM
 from .pipeline import process_all
+from .priority import build_plan, default_as_of
 from .samples import import_sample, normalise_email
 from .schemas import Profile
 
@@ -147,6 +148,28 @@ def create_app(store: Optional[Store] = None, llm: Optional[LLM] = None) -> Fast
             raise HTTPException(404, "Commitment not found")
         store.update_commitment(cid, status=body.status)
         return store.get_commitment(cid)  # type: ignore[return-value]
+
+    @app.get("/api/plan")
+    def plan(as_of: Optional[str] = None) -> Dict[str, Any]:
+        """Today / this-week plan, ranked for the saved profile. `as_of` (ISO) overrides the clock."""
+        from datetime import datetime
+        if as_of:
+            try:
+                when, reason = datetime.fromisoformat(as_of), "chosen by you"
+            except ValueError:
+                raise HTTPException(422, "as_of must be an ISO date-time, e.g. 2026-10-22T09:00")
+        else:
+            emails = store.list_emails()
+            d = default_as_of(max((e["sent_at"] for e in emails), default=None))
+            when, reason = d["as_of"], d["reason"]
+        out = build_plan(store.list_commitments(), store.get_profile(), when)
+        out["as_of_reason"] = reason
+        return out
+
+    @app.get("/api/skipped")
+    def list_skipped() -> List[Dict[str, Any]]:
+        """Things the model proposed that the sloth refused to track, with the reason."""
+        return store.list_skipped()
 
     @app.post("/api/reset")
     def reset() -> Dict[str, str]:
